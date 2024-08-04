@@ -2,8 +2,8 @@ import { Field, Int, ObjectType } from "type-graphql";
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @ObjectType()
-@Entity("post")
-export default class Post{
+@Entity("user")
+export default class User {
     @Field(() => Int)
     @PrimaryGeneratedColumn()
     id: number;
@@ -17,6 +17,9 @@ export default class Post{
     updatedAt: Date;
 
     @Field(() => String)
+    @Column({type: "varchar", length: 50, unique: true})
+    username!: string;
+
     @Column()
-    title!: string;
+    password!: string;
 }
