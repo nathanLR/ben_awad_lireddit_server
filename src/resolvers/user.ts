@@ -28,7 +28,7 @@ export class UserResolver {
             return {
                 errors: [{
                     field: "username",
-                    message: "You need to privade a username in order to create an account."
+                    message: "You need to provide a username in order to create an account."
                 }]
             }
         if (password.length < 6)

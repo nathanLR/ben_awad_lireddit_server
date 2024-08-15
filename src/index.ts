@@ -49,7 +49,7 @@ AppDataSource.initialize().then(async () => {
     );
     app.use(
         "/graphql",
-        cors<cors.CorsRequest>(),
+        cors<cors.CorsRequest>({origin: ["http://localhost:3000"], credentials: true}),
         express.json(),
         expressMiddleware(
             apolloServer,
