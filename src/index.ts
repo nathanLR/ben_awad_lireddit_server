@@ -12,7 +12,7 @@ import { UserResolver } from "./resolvers/user";
 import RedisStore from "connect-redis"
 import session from "express-session"
 import {createClient} from "redis"
-import { __prod__ } from "./constants";
+import { __prod__, COOKIE_NAME } from "./constants";
 
 AppDataSource.initialize().then(async () => {
     logger.info(`Connection to database established on port ${process.env.DB_PORT}`);
@@ -34,7 +34,7 @@ AppDataSource.initialize().then(async () => {
     await apolloServer.start();
     app.use(
         session({
-            name: "cookie_id",
+            name: COOKIE_NAME,
             store: redisStore,
             resave: false, // required: force lightweight session keep alive (touch)
             saveUninitialized: false, // recommended: only save session when data exists

@@ -3,6 +3,8 @@ import { User } from "../entities";
 import { MyContext } from "src/types";
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
 import { UserResponse } from "../utils/graphqlTypes";
+import logger from "../utils/logger";
+import { COOKIE_NAME } from "../constants";
 
 @Resolver()
 export class UserResolver {
@@ -86,6 +88,24 @@ export class UserResolver {
                 }]
              }
         } 
+    }
+
+    @Mutation(() => Boolean)
+    logout(
+        @Ctx() {req, res}: MyContext
+    ): Promise<boolean>{
+        const logoutPromise = new Promise<boolean>((resolve) => {
+            req.session.destroy(error => {
+                if (error){
+                    logger.error(error.message);
+                    resolve(false);
+                }else{
+                    res.clearCookie(COOKIE_NAME);
+                    resolve(true);
+                }
+            })
+        });
+        return logoutPromise;
     }
 
     @Query(() => [User])
