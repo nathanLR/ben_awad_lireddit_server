@@ -20,14 +20,13 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendEmail = async (destination: string | string[], subject: string, content: string) => {
+const sendEmail = async (destination: string | string[], subject: string, html: string) => {
 
   const info = await transporter.sendMail({
     from: `"Random User" <${testAcc.user}>`, // sender address
     to: destination,
     subject: subject,
-    text: content, // plain text body
-    html: "<b>Hello world?</b>",
+    html: html,
   });
 
   console.log("Message sent: %s", info.messageId);

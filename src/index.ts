@@ -11,12 +11,10 @@ import { MyContext } from "./types";
 import { UserResolver } from "./resolvers/user";
 import RedisStore from "connect-redis"
 import session from "express-session"
-import {createClient} from "redis"
 import { __prod__, COOKIE_NAME } from "./constants";
-import { sendEmail } from "./utils/emailManager";
+import { Redis } from "ioredis";
 
 AppDataSource.initialize().then(async () => {
-    //await sendEmail("nathan.leroux3@gmail.com", "test objet", "c'est le contenu du mail");
     logger.info(`Connection to database established on port ${process.env.DB_PORT}`);
     await AppDataSource.runMigrations(); 
     
@@ -26,10 +24,10 @@ AppDataSource.initialize().then(async () => {
             resolvers: [PostResolver, UserResolver]
         })
     });
-    const redisClient = createClient();
-    redisClient.connect().catch(console.error);
+    const redis = new Redis();
+    redis.connect().catch(console.error);
     const redisStore = new RedisStore({
-        client: redisClient,
+        client: redis,
         prefix: "myapp:",
         disableTouch: true,
     });
@@ -56,7 +54,7 @@ AppDataSource.initialize().then(async () => {
         expressMiddleware(
             apolloServer,
             {
-                context: async ({req, res}: {req: Request, res: Response}): Promise<MyContext> => ({em: AppDataSource.manager, req, res})
+                context: async ({req, res}: {req: Request, res: Response}): Promise<MyContext> => ({em: AppDataSource.manager, req, res, redis: redis})
             }
         ));
     app.listen(process.env.APP_PORT, () => {

@@ -2,10 +2,12 @@ import argon2 from "argon2";
 import { User } from "../entities";
 import { MyContext } from "src/types";
 import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
-import { UserResponse } from "../utils/graphqlTypes";
+import { FieldError, UserResponse } from "../utils/graphqlTypes";
 import logger from "../utils/logger";
-import { COOKIE_NAME } from "../constants";
-import { emailIsValid } from "../utils/helpers";
+import { COOKIE_NAME, FORGOT_PASSWORD_PREFIX } from "../constants";
+import { registerValidation } from "../utils/formValidation";
+import { sendEmail } from "../utils/emailManager";
+import { v4 as uuidV4 } from "uuid";
 
 @Resolver()
 export class UserResolver {
@@ -27,41 +29,35 @@ export class UserResolver {
         @Arg("email", () => String) email: string,
         @Ctx() {em, req}: MyContext
     ): Promise<UserResponse>{
-        if (username.length == 0)
-            return {
-                errors: [{
-                    field: "username",
-                    message: "You need to provide a username in order to create an account."
-                }]
-            }
-        if (email.length == 0 || (email.length > 0 && !emailIsValid(email)))
-            return {
-                errors: [{
-                    field: "email",
-                    message: "You need to provide a valid email in order to create an account."
-                }]
-            }
-        if (password.length < 6)
-            return {
-                errors: [{
-                    field: "password",
-                    message: "Password must be at least 6 characters long."
-                }]
-            }
+        let errors: FieldError[] = registerValidation(username, password, email)
+        // if (await em.findOne(User, {where: {username: username}}) != null)
+        //     return {
+        //         errors: [{
+        //             field: "username",
+        //             message: "This username is already taken."
+        //         }]
+        //     }
+        // if (await em.findOne(User, {where: {email: email}}) != null)
+        //     return {
+        //         errors: [{
+        //             field: "email",
+        //             message: "This email address is already taken."
+        //         }]
+        //     }
         if (await em.findOne(User, {where: {username: username}}) != null)
-            return {
-                errors: [{
+                errors.push({
                     field: "username",
                     message: "This username is already taken."
-                }]
-            }
+                })
         if (await em.findOne(User, {where: {email: email}}) != null)
-            return {
-                errors: [{
+                errors.push({
                     field: "email",
                     message: "This email address is already taken."
-                }]
-            }
+                })
+        
+        if (errors.length > 0)
+            return {errors}
+
         const hash = await argon2.hash(password);
         const newUser = em.create(User, {username: username, email: email, password: hash});
         await em.save(newUser);
@@ -123,6 +119,24 @@ export class UserResolver {
             })
         });
         return logoutPromise;
+    }
+
+    @Mutation(() => Boolean)
+    async forgotPassword(
+        @Arg("email") email: string,
+        @Ctx() {em, redis}: MyContext
+    ): Promise<boolean>{
+        const user = await em.findOne(User, {where: {email: email}});
+        if (!user)
+            return true;
+        const token: string = uuidV4();
+
+        const result:string = await redis.set(FORGOT_PASSWORD_PREFIX + token, user.id, "EX", 1000 * 60 * 60 * 2); // 2 hours
+        if (result == "OK"){
+            await sendEmail(email, "Reset password", `<a href="http://localhost:3000/reset-password/${token}">Click here to reset your password</>`);
+            return true;
+        }else
+            return false;
     }
 
     @Query(() => [User])
