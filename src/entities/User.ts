@@ -18,6 +18,10 @@ export default class User {
 
     @Field(() => String)
     @Column({type: "varchar", length: 50, unique: true})
+    email!: string;
+
+    @Field(() => String)
+    @Column({type: "varchar", length: 50, unique: true})
     username!: string;
 
     @Column()

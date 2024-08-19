@@ -5,6 +5,7 @@ import { Arg, Ctx, Mutation, Query, Resolver } from "type-graphql";
 import { UserResponse } from "../utils/graphqlTypes";
 import logger from "../utils/logger";
 import { COOKIE_NAME } from "../constants";
+import { emailIsValid } from "../utils/helpers";
 
 @Resolver()
 export class UserResolver {
@@ -23,14 +24,21 @@ export class UserResolver {
     async createUser(
         @Arg("username", () => String) username: string,
         @Arg("password", () => String) password: string,
+        @Arg("email", () => String) email: string,
         @Ctx() {em, req}: MyContext
     ): Promise<UserResponse>{
-        
         if (username.length == 0)
             return {
                 errors: [{
                     field: "username",
                     message: "You need to provide a username in order to create an account."
+                }]
+            }
+        if (email.length == 0 || (email.length > 0 && !emailIsValid(email)))
+            return {
+                errors: [{
+                    field: "email",
+                    message: "You need to provide a valid email in order to create an account."
                 }]
             }
         if (password.length < 6)
@@ -47,8 +55,15 @@ export class UserResolver {
                     message: "This username is already taken."
                 }]
             }
+        if (await em.findOne(User, {where: {email: email}}) != null)
+            return {
+                errors: [{
+                    field: "email",
+                    message: "This email address is already taken."
+                }]
+            }
         const hash = await argon2.hash(password);
-        const newUser = em.create(User, {username: username, password: hash});
+        const newUser = em.create(User, {username: username, email: email, password: hash});
         await em.save(newUser);
         req.session.userId = newUser.id;
         return {user: newUser};
@@ -56,16 +71,18 @@ export class UserResolver {
 
     @Mutation(() => UserResponse)
     async login(
-        @Arg("username", () => String) username: string,
+        @Arg("usernameOrEmail", () => String) usernameOrEmail: string,
         @Arg("password", () => String) password: string,
         @Ctx() {em, req}: MyContext
     ): Promise<UserResponse>{
-        const user = await em.findOne(User, {where: {username: username}});
+        const user = await em.findOne(User, {where: 
+            usernameOrEmail.includes("@") ? {email: usernameOrEmail} : {username: usernameOrEmail}
+        });
         if (!user)
             return {
                 errors: [{
-                    field: "username",
-                    message: `Couldn't find any User with the name ${username}.`
+                    field: "usernameOrEmail",
+                    message: `Couldn't find any User with the provided ${usernameOrEmail.includes("@") ? "email" : "username"}.`
                 }]
             }
         try {

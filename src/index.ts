@@ -13,8 +13,10 @@ import RedisStore from "connect-redis"
 import session from "express-session"
 import {createClient} from "redis"
 import { __prod__, COOKIE_NAME } from "./constants";
+import { sendEmail } from "./utils/emailManager";
 
 AppDataSource.initialize().then(async () => {
+    //await sendEmail("nathan.leroux3@gmail.com", "test objet", "c'est le contenu du mail");
     logger.info(`Connection to database established on port ${process.env.DB_PORT}`);
     await AppDataSource.runMigrations(); 
     
