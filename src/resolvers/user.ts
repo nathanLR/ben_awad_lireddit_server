@@ -139,6 +139,44 @@ export class UserResolver {
             return false;
     }
 
+    @Mutation(() => UserResponse)
+    async resetPassword(
+        @Arg("password") password: string,
+        @Arg("confirmPassword") confirmPassword: string,
+        @Arg("token") token: string,
+        @Ctx() {em, redis}: MyContext
+    ): Promise<UserResponse>{
+        console.log("coucou");
+        if (password != confirmPassword)
+            return {errors: [{
+                field: "confirmPassword",
+                message: "Passwords do not match."
+            }]}
+        const userId = await redis.get(FORGOT_PASSWORD_PREFIX + token);
+        if (!userId)
+            return { 
+                errors: [{
+                    field: "confirmPassword",
+                    message: "Your reset password token has expired."
+                }]
+            }
+        
+        const user = await em.findOne(User, {where: {id: parseInt(userId)}});
+        if (!user)
+            return {
+                errors: [{
+                    field: "confirmPassword",
+                    message: "Your account was not found on the database"
+                }]
+            }
+        user.password = await argon2.hash(password);
+        await em.save(user);
+        await redis.del([FORGOT_PASSWORD_PREFIX + token]);
+        return {
+            user: user
+        };
+    }
+
     @Query(() => [User])
     async getUsers(
         @Ctx() {em}: MyContext
