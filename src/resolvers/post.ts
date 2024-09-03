@@ -1,7 +1,7 @@
 import { MyContext } from "src/types";
 import { Post, User } from "../entities";
 import { Arg, Ctx, FieldResolver, Int, Mutation, Query, Resolver, Root, UseMiddleware } from "type-graphql";
-import { FieldError, PostInput, PostResponse } from "../utils/graphqlTypes";
+import { FieldError, PaginatedPosts, PostInput, PostResponse } from "../utils/graphqlTypes";
 import { isAuth } from "../middleware/isAuth";
 import { createPostValidation } from "../utils/formValidation";
 import { LessThan } from "typeorm";
@@ -15,20 +15,24 @@ export class PostResolver{
     }
 
 
-    @Query(() => [Post])
+    @Query(() => PaginatedPosts)
     async getPosts(
         @Ctx() {em}: MyContext,
         @Arg("limit", () => Int) limit: number,
         @Arg("cursor", () => String, {nullable: true}) cursor: string
-    ): Promise<Post[]>{
+    ): Promise<PaginatedPosts>{
         const realLimit = Math.min(50, limit);
+        const realLimitPlusOne = realLimit + 1;
         const posts = await em.find(Post, {
             order: {createdAt: "DESC"},
-            take: realLimit,
+            take: realLimitPlusOne,
             where: cursor ? {createdAt: LessThan(new Date(parseInt(cursor)))} : undefined,
             relations: {user: true}
         });
-        return posts;
+        return {
+            hasMore: posts.length == realLimitPlusOne,
+            posts: posts.slice(0, realLimit)
+        }
     }
 
     @Query(() => Post, {nullable: true})
