@@ -1,5 +1,6 @@
 import { Field, Int, ObjectType } from "type-graphql";
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import Post from "./Post";
 
 @ObjectType()
 @Entity("user")
@@ -26,4 +27,8 @@ export default class User {
 
     @Column()
     password!: string;
+
+    @Field(() => [Post], {nullable: true})
+    @OneToMany(() => Post, (post) => post.user)
+    posts: Post[]
 }

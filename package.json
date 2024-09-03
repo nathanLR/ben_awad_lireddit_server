@@ -8,6 +8,7 @@
     "typeorm": "npx typeorm-ts-node-commonjs --dataSource ./src/data-source.ts",
     "typeorm:migrate": "npm run typeorm migration:run",
     "typeorm:generate": "npm run typeorm migration:generate",
+    "typeorm:create": "npx typeorm migration:create",
     "typeorm:revert": "npm run typeorm migration:revert"
   },
   "keywords": [],

@@ -1,4 +1,4 @@
-import { FieldError } from "./graphqlTypes";
+import { FieldError, PostInput } from "./graphqlTypes";
 import { emailIsValid } from "./helpers";
 
 export const registerValidation = (username: string, password: string, email: string): FieldError[] => {
@@ -26,5 +26,20 @@ export const registerValidation = (username: string, password: string, email: st
             message: "Password must be at least 6 characters long."
         })
  
+    return errors;
+}
+
+export const createPostValidation = ({title, text}: PostInput) => {
+    let errors: FieldError[] = [];
+    if (!title || title.length == 0)
+        errors.push({
+            field: "title",
+            message: "The title is required."
+        })
+    if (!text || text.length == 0)
+        errors.push({
+            field: "text",
+            message: "The text is required."
+        })
     return errors;
 }

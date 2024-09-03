@@ -1,15 +1,33 @@
 import { MyContext } from "src/types";
-import { Post } from "../entities";
-import { Arg, Ctx, Int, Mutation, Query, Resolver } from "type-graphql";
+import { Post, User } from "../entities";
+import { Arg, Ctx, FieldResolver, Int, Mutation, Query, Resolver, Root, UseMiddleware } from "type-graphql";
+import { FieldError, PostInput, PostResponse } from "../utils/graphqlTypes";
+import { isAuth } from "../middleware/isAuth";
+import { createPostValidation } from "../utils/formValidation";
+import { LessThan } from "typeorm";
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-@Resolver()
+@Resolver(Post)
 export class PostResolver{
+    @FieldResolver(() => String)
+    textExcerpt(@Root() post: Post){
+        const words = post.text.split(' ', 15);
+        return words.join(' ') + "...";
+    }
+
+
     @Query(() => [Post])
-    async getPosts(@Ctx() {em}: MyContext): Promise<Post[]>{
-        await sleep(3000);
-        const posts: Post[] = await em.find(Post);
+    async getPosts(
+        @Ctx() {em}: MyContext,
+        @Arg("limit", () => Int) limit: number,
+        @Arg("cursor", () => String, {nullable: true}) cursor: string
+    ): Promise<Post[]>{
+        const realLimit = Math.min(50, limit);
+        const posts = await em.find(Post, {
+            order: {createdAt: "DESC"},
+            take: realLimit,
+            where: cursor ? {createdAt: LessThan(new Date(parseInt(cursor)))} : undefined,
+            relations: {user: true}
+        });
         return posts;
     }
 
@@ -22,38 +40,70 @@ export class PostResolver{
         return post;
     }
 
-    @Mutation(() => Post)
+    @Mutation(() => PostResponse)
+    @UseMiddleware(isAuth)
     async createPost(
-        @Arg("title", () => String) title: string,
-        @Ctx() {em}: MyContext
-    ): Promise<Post> {
-        const newPost = em.create(Post, {title: title});
-        await em.save(newPost);
-        return newPost;
+        @Arg("input", () => PostInput) input: PostInput,
+        @Ctx() {em, req}: MyContext
+    ): Promise<PostResponse> {
+        let errors: FieldError[] = createPostValidation(input);
+        const user = await em.findOne(User, {where: {id: req.session.userId}});
+        if (!user)
+            errors.push({
+                field: "user",
+                message: "The specified user does not exist on the database."
+            });
+        if (errors.length > 0)
+            return {errors}
+        const newPost = em.create(Post, {title: input.title, text: input.text, user: user});
+        await em.save(newPost); 
+        return { post: newPost};
     }
 
-    @Mutation(() => Post, {nullable: true})
+    @Mutation(() => PostResponse)
     async updatePost(
         @Arg("id", () => Int) id: number,
         @Arg("title", () => String) title: string,
         @Ctx() {em}: MyContext
-    ): Promise<Post | null> {
+    ): Promise<PostResponse> {
         const postToUpdate: Post | null = await em.findOne(Post, {where: {id: id}});
         if (!postToUpdate)
-            return null;
+            return {
+                errors: [{
+                    field: "id",
+                    message: "This post does not exist on the database."
+                }]
+            }
+        if (title.length == 0)
+            return {
+                errors: [{
+                    field: "title",
+                    message: "You need to provide a title to the post."
+                }]
+            }
         postToUpdate.title = title;
-        return await em.save(postToUpdate);
+        await em.save(postToUpdate)
+        return {
+            post: postToUpdate
+        }
     }
 
-    @Mutation(() => Boolean)
+    @Mutation(() => PostResponse)
     async deletePost(
         @Arg("id", () => Int) id: number,
         @Ctx() {em}: MyContext
-    ): Promise<boolean> {
+    ): Promise<PostResponse> {
         const postToDelete = await em.findOne(Post, {where: {id: id}});
         if(!postToDelete)
-            return false;
+            return {
+                errors: [{
+                    field: "id",
+                    message: "This post does not exist on the database."
+                }]
+            }
         await em.remove(postToDelete);
-        return true;
+        return {
+            post: postToDelete
+        };
     }
 }
