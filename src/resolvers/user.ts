@@ -16,7 +16,7 @@ export class UserResolver {
     if (!req.session.userId) return null;
     const user: User | null = await em.findOne(User, {
       where: { id: req.session.userId },
-      relations: {posts: true}
+      relations: {posts: true, upvotes: true}
     });
     return user;
   }
@@ -29,20 +29,6 @@ export class UserResolver {
     @Ctx() { em, req }: MyContext
   ): Promise<UserResponse> {
     let errors: FieldError[] = registerValidation(username, password, email);
-    // if (await em.findOne(User, {where: {username: username}}) != null)
-    //     return {
-    //         errors: [{
-    //             field: "username",
-    //             message: "This username is already taken."
-    //         }]
-    //     }
-    // if (await em.findOne(User, {where: {email: email}}) != null)
-    //     return {
-    //         errors: [{
-    //             field: "email",
-    //             message: "This email address is already taken."
-    //         }]
-    //     }
     if ((await em.findOne(User, { where: { username: username } })) != null)
       errors.push({
         field: "username",

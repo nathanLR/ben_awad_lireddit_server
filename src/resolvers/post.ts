@@ -27,7 +27,7 @@ export class PostResolver{
             order: {createdAt: "DESC"},
             take: realLimitPlusOne,
             where: cursor ? {createdAt: LessThan(new Date(parseInt(cursor)))} : undefined,
-            relations: {user: true}
+            relations: {user: true, upvotes: true}
         });
         return {
             hasMore: posts.length == realLimitPlusOne,

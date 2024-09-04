@@ -13,6 +13,7 @@ import RedisStore from "connect-redis"
 import session from "express-session"
 import { __prod__, COOKIE_NAME } from "./constants";
 import { Redis } from "ioredis";
+import UpvoteResolver from "./resolvers/upvote";
 
 AppDataSource.initialize().then(async () => {
     logger.info(`Connection to database established on port ${process.env.DB_PORT}`);
@@ -21,7 +22,7 @@ AppDataSource.initialize().then(async () => {
     const app = express();
     const apolloServer = new ApolloServer<MyContext>({
         schema: await buildSchema({
-            resolvers: [PostResolver, UserResolver]
+            resolvers: [PostResolver, UserResolver, UpvoteResolver]
         })
     });
     const redis = new Redis();

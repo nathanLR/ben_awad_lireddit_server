@@ -1,3 +1,4 @@
 import Post from "./Post"
 import User from "./User"
-export {Post, User};
+import Upvote from "./Upvote";
+export {Post, User, Upvote};
