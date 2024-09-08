@@ -18,9 +18,12 @@ export default class Upvote {
   @PrimaryColumn({ type: "int" })
   postId!: number;
 
+  @Field(() => String)
+  status!: "new" | "removed" | "changed";
+
   @ManyToOne(() => User, (user) => user.upvotes)
-  user!: User;
+  user?: User;
 
   @ManyToOne(() => Post, (post) => post.upvotes)
-  post!: Post;
+  post?: Post;
 }

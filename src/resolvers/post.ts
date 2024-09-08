@@ -1,5 +1,5 @@
 import { MyContext } from "src/types";
-import { Post, User } from "../entities";
+import { Post, Upvote, User } from "../entities";
 import { Arg, Ctx, FieldResolver, Int, Mutation, Query, Resolver, Root, UseMiddleware } from "type-graphql";
 import { FieldError, PaginatedPosts, PostInput, PostResponse } from "../utils/graphqlTypes";
 import { isAuth } from "../middleware/isAuth";
@@ -10,10 +10,23 @@ import { LessThan } from "typeorm";
 export class PostResolver{
     @FieldResolver(() => String)
     textExcerpt(@Root() post: Post){
-        const words = post.text.split(' ', 15);
+        const words = post.text.split(' ', 25);
         return words.join(' ') + "...";
     }
 
+    @FieldResolver(() => Int, {nullable: true})
+    async voteStatus(
+        @Root() post: Post,
+        @Ctx() {req, em}: MyContext
+    ): Promise<number | null>{
+        if (req.session.userId){ 
+            const upvote = await em.findOne(Upvote, {where: {postId: post.id, userId: req.session.userId}});
+            if (!upvote)
+                return null;
+            return upvote.value;
+        }
+        return null;
+    }
 
     @Query(() => PaginatedPosts)
     async getPosts(
@@ -27,12 +40,13 @@ export class PostResolver{
             order: {createdAt: "DESC"},
             take: realLimitPlusOne,
             where: cursor ? {createdAt: LessThan(new Date(parseInt(cursor)))} : undefined,
-            relations: {user: true, upvotes: true}
+            relations: {user: true}
         });
-        return {
+        const result = {
             hasMore: posts.length == realLimitPlusOne,
             posts: posts.slice(0, realLimit)
-        }
+        };
+        return result;
     }
 
     @Query(() => Post, {nullable: true})

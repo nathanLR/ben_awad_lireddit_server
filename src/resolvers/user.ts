@@ -29,6 +29,7 @@ export class UserResolver {
     @Ctx() { em, req }: MyContext
   ): Promise<UserResponse> {
     let errors: FieldError[] = registerValidation(username, password, email);
+    if (errors.length > 0) return { errors };
     if ((await em.findOne(User, { where: { username: username } })) != null)
       errors.push({
         field: "username",
@@ -62,7 +63,7 @@ export class UserResolver {
     const user = await em.findOne(User, {
       where: usernameOrEmail.includes("@")
         ? { email: usernameOrEmail }
-        : { username: usernameOrEmail },
+        : { username: usernameOrEmail }
     });
     if (!user)
       return {

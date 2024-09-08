@@ -34,7 +34,7 @@ export default class Post{
     @ManyToOne(() => User, (user) => user.posts)
     user!: User;
 
-    @Field(() => [Upvote], {nullable: true})
+    //@Field(() => [Upvote], {nullable: true})
     @OneToMany(() => Upvote, (upvote) => upvote.post)
     upvotes: Upvote[];
 }
