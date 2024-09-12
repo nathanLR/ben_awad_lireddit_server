@@ -3,8 +3,9 @@ import { DataSource } from "typeorm";
 import "dotenv/config";
 import { __prod__ } from "./constants";
 import { Post, Upvote, User } from "./entities";
-import { PostPlaceholder1725110085440 } from "../migrations/1725110085440-PostPlaceholder";
-import { Upvote1725475949196 } from "../migrations/1725475949196-Upvote";
+import { GitChanges1725976861048 } from "../migrations/1725976861048-GitChanges";
+import { PostDatas1725977259043 } from "../migrations/1725977259043-PostDatas";
+import { PostChange1726151464140 } from "../migrations/1726151464140-PostChange";
 
 const AppDataSource = new DataSource({
     type: "postgres",
@@ -15,7 +16,7 @@ const AppDataSource = new DataSource({
     database: process.env.DB_NAME,
     entities: [Post, User, Upvote],
     migrationsTableName: "lirredit_server_migrations",
-    migrations: [PostPlaceholder1725110085440, Upvote1725475949196],
+    migrations: [GitChanges1725976861048, PostDatas1725977259043, PostChange1726151464140],
     synchronize: false,
     logging: !__prod__
 });

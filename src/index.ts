@@ -22,7 +22,7 @@ AppDataSource.initialize().then(async () => {
     const app = express();
     const apolloServer = new ApolloServer<MyContext>({
         schema: await buildSchema({
-            resolvers: [PostResolver, UserResolver, UpvoteResolver]
+            resolvers: [PostResolver, UserResolver, UpvoteResolver] 
         })
     });
     const redis = new Redis();

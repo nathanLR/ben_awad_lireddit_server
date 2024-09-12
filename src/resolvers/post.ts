@@ -4,23 +4,23 @@ import { Arg, Ctx, FieldResolver, Int, Mutation, Query, Resolver, Root, UseMiddl
 import { FieldError, PaginatedPosts, PostInput, PostResponse } from "../utils/graphqlTypes";
 import { isAuth } from "../middleware/isAuth";
 import { createPostValidation } from "../utils/formValidation";
-import { LessThan } from "typeorm";
+import { FindOptionsWhere, LessThan } from "typeorm";
 
 @Resolver(Post)
-export class PostResolver{
+export class PostResolver {
     @FieldResolver(() => String)
-    textExcerpt(@Root() post: Post){
+    textExcerpt(@Root() post: Post) {
         const words = post.text.split(' ', 25);
         return words.join(' ') + "...";
     }
 
-    @FieldResolver(() => Int, {nullable: true})
+    @FieldResolver(() => Int, { nullable: true })
     async voteStatus(
         @Root() post: Post,
-        @Ctx() {req, em}: MyContext
-    ): Promise<number | null>{
-        if (req.session.userId){ 
-            const upvote = await em.findOne(Upvote, {where: {postId: post.id, userId: req.session.userId}});
+        @Ctx() { req, em }: MyContext
+    ): Promise<number | null> {
+        if (req.session.userId) {
+            const upvote = await em.findOne(Upvote, { where: { postId: post.id, userId: req.session.userId } });
             if (!upvote)
                 return null;
             return upvote.value;
@@ -30,17 +30,22 @@ export class PostResolver{
 
     @Query(() => PaginatedPosts)
     async getPosts(
-        @Ctx() {em}: MyContext,
+        @Ctx() { em }: MyContext,
         @Arg("limit", () => Int) limit: number,
-        @Arg("cursor", () => String, {nullable: true}) cursor: string
-    ): Promise<PaginatedPosts>{
+        @Arg("cursor", () => String, { nullable: true }) cursor: string,
+    ): Promise<PaginatedPosts> {
         const realLimit = Math.min(50, limit);
         const realLimitPlusOne = realLimit + 1;
+        const whereClause: FindOptionsWhere<Post> = {}
+
+        if (cursor)
+            whereClause.createdAt = LessThan(new Date(parseInt(cursor)));
+
         const posts = await em.find(Post, {
-            order: {createdAt: "DESC"},
+            order: { createdAt: "DESC" },
             take: realLimitPlusOne,
-            where: cursor ? {createdAt: LessThan(new Date(parseInt(cursor)))} : undefined,
-            relations: {user: true}
+            where: whereClause,
+            relations: { user: true }
         });
         const result = {
             hasMore: posts.length == realLimitPlusOne,
@@ -49,12 +54,44 @@ export class PostResolver{
         return result;
     }
 
-    @Query(() => Post, {nullable: true})
+    @Query(() => PaginatedPosts)
+    async getUserPosts(
+        @Ctx() { em }: MyContext,
+        @Arg("limit", () => Int) limit: number,
+        @Arg("cursor", () => String, { nullable: true }) cursor: string,
+        @Arg("username", () => String) username: string
+    ): Promise<PaginatedPosts> {
+        const realLimit = Math.min(50, limit);
+        const realLimitPlusOne = realLimit + 1;
+        const user = await em.findOne(User, { where: { username: username } });
+        if (!user)
+            return { hasMore: false, posts: [] };
+
+        const whereClause: FindOptionsWhere<Post> = {
+            userId: user.id,
+        }
+        if (cursor)
+            whereClause.createdAt = LessThan(new Date(parseInt(cursor)));
+
+        const posts = await em.find(Post, {
+            order: { createdAt: "DESC" },
+            take: realLimitPlusOne,
+            where: whereClause,
+            relations: { user: true }
+        });
+        const result = {
+            hasMore: posts.length == realLimitPlusOne,
+            posts: posts.slice(0, realLimit)
+        };
+        return result;
+    }
+
+    @Query(() => Post, { nullable: true })
     async getPost(
         @Arg("id", () => Int) id: number,
-        @Ctx() {em}: MyContext
-    ): Promise<Post | null>{
-        const post: Post | null = await em.findOne(Post, {where: {id: id}});
+        @Ctx() { em }: MyContext
+    ): Promise<Post | null> {
+        const post: Post | null = await em.findOne(Post, { where: { id: id }, relations: { user: true } });
         return post;
     }
 
@@ -62,29 +99,29 @@ export class PostResolver{
     @UseMiddleware(isAuth)
     async createPost(
         @Arg("input", () => PostInput) input: PostInput,
-        @Ctx() {em, req}: MyContext
+        @Ctx() { em, req }: MyContext
     ): Promise<PostResponse> {
         let errors: FieldError[] = createPostValidation(input);
-        const user = await em.findOne(User, {where: {id: req.session.userId}});
+        const user = await em.findOne(User, { where: { id: req.session.userId } });
         if (!user)
             errors.push({
                 field: "user",
                 message: "The specified user does not exist on the database."
             });
         if (errors.length > 0)
-            return {errors}
-        const newPost = em.create(Post, {title: input.title, text: input.text, user: user});
-        await em.save(newPost); 
-        return { post: newPost};
+            return { errors }
+        const newPost = em.create(Post, { title: input.title, text: input.text, user: user });
+        await em.save(newPost);
+        return { post: newPost };
     }
 
     @Mutation(() => PostResponse)
     async updatePost(
         @Arg("id", () => Int) id: number,
         @Arg("title", () => String) title: string,
-        @Ctx() {em}: MyContext
+        @Ctx() { em }: MyContext
     ): Promise<PostResponse> {
-        const postToUpdate: Post | null = await em.findOne(Post, {where: {id: id}});
+        const postToUpdate: Post | null = await em.findOne(Post, { where: { id: id } });
         if (!postToUpdate)
             return {
                 errors: [{
@@ -109,10 +146,10 @@ export class PostResolver{
     @Mutation(() => PostResponse)
     async deletePost(
         @Arg("id", () => Int) id: number,
-        @Ctx() {em}: MyContext
+        @Ctx() { em }: MyContext
     ): Promise<PostResponse> {
-        const postToDelete = await em.findOne(Post, {where: {id: id}});
-        if(!postToDelete)
+        const postToDelete = await em.findOne(Post, { where: { id: id } });
+        if (!postToDelete)
             return {
                 errors: [{
                     field: "id",

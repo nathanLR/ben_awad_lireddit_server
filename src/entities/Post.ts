@@ -30,6 +30,9 @@ export default class Post{
     @Column({type: "int", default: 0})
     points!: number
     
+    @Column()
+    userId!: number;
+
     @Field(() => User)
     @ManyToOne(() => User, (user) => user.posts)
     user!: User;
