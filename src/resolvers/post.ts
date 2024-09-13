@@ -116,9 +116,11 @@ export class PostResolver {
     }
 
     @Mutation(() => PostResponse)
+    @UseMiddleware(isAuth)
     async updatePost(
         @Arg("id", () => Int) id: number,
         @Arg("title", () => String) title: string,
+        @Arg("text", () => String) text: string,
         @Ctx() { em }: MyContext
     ): Promise<PostResponse> {
         const postToUpdate: Post | null = await em.findOne(Post, { where: { id: id } });
@@ -136,7 +138,15 @@ export class PostResolver {
                     message: "You need to provide a title to the post."
                 }]
             }
+        if (text.length == 0)
+            return {
+                errors: [{
+                    field: "text",
+                    message: "You need to provide a text to the post."
+                }]
+            }
         postToUpdate.title = title;
+        postToUpdate.text = text;
         await em.save(postToUpdate)
         return {
             post: postToUpdate
@@ -144,9 +154,10 @@ export class PostResolver {
     }
 
     @Mutation(() => PostResponse)
+    @UseMiddleware(isAuth)
     async deletePost(
         @Arg("id", () => Int) id: number,
-        @Ctx() { em }: MyContext
+        @Ctx() { em, req }: MyContext
     ): Promise<PostResponse> {
         const postToDelete = await em.findOne(Post, { where: { id: id } });
         if (!postToDelete)
@@ -156,9 +167,17 @@ export class PostResolver {
                     message: "This post does not exist on the database."
                 }]
             }
+        if (req.session.userId != postToDelete.userId)
+            return {
+                errors: [{
+                    field: "id",
+                    message: "You cannot delete a post that's not yours."
+                }]
+            }
+        const deletedPost = { ...postToDelete };
         await em.remove(postToDelete);
         return {
-            post: postToDelete
+            post: deletedPost
         };
     }
 }

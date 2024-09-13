@@ -38,6 +38,6 @@ export default class Post{
     user!: User;
 
     //@Field(() => [Upvote], {nullable: true})
-    @OneToMany(() => Upvote, (upvote) => upvote.post)
+    @OneToMany(() => Upvote, (upvote) => upvote.post, {onDelete: "CASCADE"})
     upvotes: Upvote[];
 }
