@@ -1,5 +1,5 @@
 import { MyContext } from "src/types";
-import { Post, Upvote, User } from "../entities";
+import { Post, User } from "../entities";
 import { Arg, Ctx, FieldResolver, Int, Mutation, Query, Resolver, Root, UseMiddleware } from "type-graphql";
 import { FieldError, PaginatedPosts, PostInput, PostResponse } from "../utils/graphqlTypes";
 import { isAuth } from "../middleware/isAuth";
@@ -17,13 +17,13 @@ export class PostResolver {
     @FieldResolver(() => Int, { nullable: true })
     async voteStatus(
         @Root() post: Post,
-        @Ctx() { req, em }: MyContext
+        @Ctx() { req, voteStatusLoader }: MyContext
     ): Promise<number | null> {
         if (req.session.userId) {
-            const upvote = await em.findOne(Upvote, { where: { postId: post.id, userId: req.session.userId } });
-            if (!upvote)
+            const upvoteValue = await voteStatusLoader.load({postId: post.id, userId: req.session.userId});
+            if (!upvoteValue)
                 return null;
-            return upvote.value;
+            return upvoteValue;
         }
         return null;
     }

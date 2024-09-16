@@ -5,7 +5,7 @@ import { Field, ObjectType } from "type-graphql";
 
 @ObjectType()
 @Entity()
-export default class Upvote {
+export default class Upvote{
   @Field()
   @Column({ type: "int" })
   value!: number;
